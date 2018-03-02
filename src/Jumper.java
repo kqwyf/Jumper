@@ -1,8 +1,9 @@
 import javax.swing.JFrame;
-import javax.swing.JLabel;
+import javax.swing.JPanel;
 import java.awt.Graphics;
 import java.awt.Dimension;
 import java.awt.Color;
+import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
@@ -15,8 +16,9 @@ import java.util.function.Consumer;
 
 public class Jumper
 {
-	private static final int WIDTH=300;
-	private static final int HEIGHT=400;
+	public static final int WIDTH=300;
+	public static final int HEIGHT=400;
+
 	private static final String APP_NAME="Jumper";
 	JFrame mainFrame;
 	Controller mainView;
@@ -29,12 +31,14 @@ public class Jumper
 	public Jumper()
 	{
 		mainFrame=new JFrame(APP_NAME);
-		mainView=new Controller((int score)->setScore(score));
+		mainView=new Controller((Integer score)->setScore(score));
 		mainFrame.setSize(new Dimension(WIDTH,HEIGHT));
-		mainFrame.setLayout(null);
-		mainFrame.add(mainView);
-		mainView.setBounds(0,0,WIDTH,HEIGHT);
+		mainFrame.setResizable(false);
+		mainFrame.setLocationRelativeTo(null);
+		mainFrame.getContentPane().setLayout(new BorderLayout());
+		mainFrame.getContentPane().add(mainView,BorderLayout.CENTER);
 		mainFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		mainFrame.setVisible(true);
 	}
 
 	private void setScore(int score)
@@ -49,7 +53,7 @@ class Player
 	private int v;
 	
 	public static final int FLYING_SPEED=2;
-	private static final double PRESS_SPEED=1.2;
+	private static final double PRESS_SPEED=1.1;
 	private static final int SPEED_K=5;
 
 	public Player(int x,int y,int r)
@@ -74,9 +78,9 @@ class Player
 	public boolean press()
 	{
 		int old_height=height;
-		height/=PRESS_SPEED;
+		height=(int)(height/PRESS_SPEED+0.5);
 		y-=height-old_height;
-		return return height==old_height;
+		return height==old_height;
 	}
 
 	public void bounce()
@@ -90,7 +94,11 @@ class Player
 	{
 		if(h<=0) return true;
 		h+=v;
-		if(h<0) h=0;
+		if(h<0)
+		{
+			h=0;
+			v=0;
+		}
 		v-=Controller.GRAVITY;
 		return false;
 	}
@@ -98,7 +106,7 @@ class Player
 	public void draw(Graphics g)
 	{
 		g.setColor(Color.red);
-		g.drawOval(x,y-h,width,height);
+		g.fillOval(x,y-h,width,height);
 	}
 }
 
@@ -106,11 +114,11 @@ class Box
 {
 	public int x,y,r;
 
-	private static int reward=1;
+	public static final int MIN_R=10;
+	public static final int MAX_R=20;
+	public static final int AVE_R=(MIN_R+MAX_R)/2;
 
-	private static final int MIN_R=10;
-	private static final int MAX_R=20;
-	private static final int AVE_R=(MIN_R+MAX_R)/2;
+	private static int reward=1;
 
 	public Box(int x,int y,int r)
 	{
@@ -130,7 +138,7 @@ class Box
 	}
 	public int getCenterY()
 	{
-		return y+r*Jumper.T;
+		return (int)(y+r*Controller.T);
 	}
 
 	public int check(int x,int y)
@@ -158,20 +166,21 @@ class Box
 		g.setColor(Color.blue);
 		g.drawLine(x,getCenterY(),getCenterX(),y);
 		g.drawLine(x+2*r,getCenterY(),getCenterX(),y);
-		g.drawLine(x,getCenterY(),getCenterX(),y+r*Jumper.T);
-		g.drawLine(x+2*r,getCenterY(),getCenterX(),y+r*Jumper.T);
+		g.drawLine(x,getCenterY(),getCenterX(),(int)(y+r*Controller.T));
+		g.drawLine(x+2*r,getCenterY(),getCenterX(),(int)(y+r*Controller.T));
 	}
 }
 
-class Controller extends JLabel
+class Controller extends JPanel
 {
+	public static final int GRAVITY=1;
+	public static final double T=0.5; //tan
+
 	private static final int PLAYER_R=10;
 	private static final int PLAYER_X=(Jumper.WIDTH-PLAYER_R)/2;
-	private static final int PLAYER_Y=Jumper.HEIGHT*0.618-PLAYER_R/2;
-	private static final double T=0.5; //tan
-	private static final int MIN_DISTANCE=20;
-	private static final int MAX_DISTANCE=100;
-	private static final int GRAVITY=1;
+	private static final int PLAYER_Y=(int)(Jumper.HEIGHT*0.618-PLAYER_R/2);
+	private static final int MIN_DISTANCE=10;
+	private static final int MAX_DISTANCE=30;
 
 	private Player player;
 	private ArrayList<Box> boxes;
@@ -209,7 +218,7 @@ class Controller extends JLabel
 				{
 					public void keyPressed(KeyEvent e)
 					{
-						if(!playing&&e.getKeyCode()==VK_ENTER)
+						if(!playing&&e.getKeyCode()==KeyEvent.VK_ENTER)
 						{
 							playing=true;
 						}
@@ -237,8 +246,8 @@ class Controller extends JLabel
 		if(!failed) player.draw(g);
 		for(Box box:boxes)
 		{
-			if(box.x>WIDTH||box.x+box.width<0||box.y>HEIGHT)
-				boxes.remove(box);
+			if(box.x>WIDTH||box.x+box.r<0||box.y>HEIGHT)
+				;//boxes.remove(box);
 			else
 				box.draw(g);
 		}
@@ -252,15 +261,16 @@ class Controller extends JLabel
 		direction=1;
 		player=new Player(PLAYER_X,PLAYER_Y,PLAYER_R);
 		boxes=new ArrayList<Box>();
-		boxes.add(new Box(player.x-Box.AVE_R,player.y-Box.AVE_R*T));
+		boxes.add(new Box(player.x-Box.AVE_R,(int)(player.y-Box.AVE_R*T),Box.AVE_R));
 		boxes.add(generateBox());
+		timer.start();
 	}
 
 	private void step()
 	{
 		if(failed)
 		{
-			getGraphics().drawString("Press Enter to restart.");
+			getGraphics().drawString("Press Enter to restart.",0,0);
 			playing=false;
 		}
 		else if(pressing)
@@ -305,10 +315,11 @@ class Controller extends JLabel
 	{
 		direction=(int)(Math.random()*2)*2-1; //get a random number either 1 or -1
 		int distance=(int)(Math.random()*(MAX_DISTANCE-MIN_DISTANCE)+MIN_DISTANCE);
+		System.out.println(distance);
 		int centerX=player.x+direction*distance;
-		int centerY=player.y-distance*T;
-		int r=(int)(Math.random()*(MAX_R-MIN_R)+MIN_R);
-		return new Box(centerX-r,centerY-r*T,r);
+		int centerY=(int)(player.y-distance*T);
+		int r=(int)(Math.random()*(Box.MAX_R-Box.MIN_R)+Box.MIN_R);
+		return new Box(centerX-r,(int)(centerY-r*T),r);
 	}
 
 	private void fail()
