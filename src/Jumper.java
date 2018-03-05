@@ -56,7 +56,7 @@ public class Jumper
 	/**
 	 * 分数控制方法
 	 *
-	 * @param s 需增加的分数。当s<0时功能为得分清零。
+	 * @param s 待增加的分数。当s<0时功能为得分清零。
 	 */
 	private void addScore(int s)
 	{
