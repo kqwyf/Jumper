@@ -60,8 +60,10 @@ public class Jumper
 	 */
 	private void addScore(int s)
 	{
-		if(s<0) score=0;
-		else score+=s;
+		if(s<0)
+			score=0;
+		else
+			score+=s;
 		mainFrame.setTitle(APP_NAME+" - Score:"+score);
 	}
 }
